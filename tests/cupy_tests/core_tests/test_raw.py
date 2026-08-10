@@ -963,23 +963,29 @@ class TestRaw:
         template<typename Tv, typename Tp>
         __global__ void kernel() { return; }
         '''
-        name_expressions = ('kernel<float,float>',)
+        name_expressions = (
+            'kernel<float,float>',
+            'kernel<float, double>',
+            'kernel<float,  double>',
+        )
 
         try:
-            mod = cupy.RawModule(
-                code=code, name_expressions=name_expressions)
-            mod.compile()
-            _util.clear_memo()
-
             compile_kernel = compiler._compile_using_nvrtc_no_warning
-            with mock.patch.object(
-                    compiler, '_compile_using_nvrtc_no_warning',
-                    wraps=compile_kernel) as compile_mock:
-                cached_mod = cupy.RawModule(
-                    code=code, name_expressions=name_expressions)
-                cached_mod.compile()
+            for name_expression in name_expressions:
+                names = (name_expression,)
+                mod = cupy.RawModule(
+                    code=code, name_expressions=names)
+                mod.compile()
+                _util.clear_memo()
 
-            assert compile_mock.call_count == 0
+                with mock.patch.object(
+                        compiler, '_compile_using_nvrtc_no_warning',
+                        wraps=compile_kernel) as compile_mock:
+                    cached_mod = cupy.RawModule(
+                        code=code, name_expressions=names)
+                    cached_mod.compile()
+
+                assert compile_mock.call_count == 0
         finally:
             _util.clear_memo()
 
